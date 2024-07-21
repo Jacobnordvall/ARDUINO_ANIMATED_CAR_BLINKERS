@@ -15,8 +15,8 @@ Fills the led strip from the inside out progressively and then fades out, and re
 
 **GOOD TO KNOW:**
 - This uses one output data pin for the animation. 
-- Short input = cycle 3 times. 
-Long input = cycle until released.
+- Short input = cycle 3 times. Long input = cycle until released.
+- Made in vscode using platformio.
 <br>
 <br>
 
