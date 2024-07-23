@@ -3,7 +3,7 @@
 
 // MCU configuration
 #define LED_PIN 6 // This is the pin that you connect to your ledstrips data in.
-#define NUM_LEDS 25 // How many leds are your strip? 
+#define NUM_LEDS 25 // How many leds are your strip? (Dont forget to tune the animation for your led count)
 #define BRIGHTNESS 255 // 1-255 How bright should it light up.
 #define INDICATOR_PIN 2 // Input pin for the indicator signal or button.
 #define LED_TYPE WS2812B // What led strip are you using?
@@ -15,7 +15,8 @@ const int min_cycles = 3; // Minimum number of animation cycles per click
 const uint32_t hold_duration = 150; // Duration for which the strip should be held fully lit
 const uint32_t hold_after_fade_duration = 200; // Duration for which the strip should be held dark after fading to black
 const uint8_t fade_speed = 10; // Speed of fading after being fully lit and held
-const uint8_t animation_logic_speed = 15; // Speed of animation logic
+const uint32_t lighting_up_delay = 20; // Delay in milliseconds between lighting up each LED
+const uint8_t animation_logic_delay = 5; // time between each ledstrip update in ms (lower is faster, but also heavier)
 
 enum AnimationState 
 {
@@ -31,6 +32,7 @@ uint8_t current_led = 0;
 uint32_t last_update = 0;
 uint32_t hold_start = 0;
 uint32_t hold_start_after_fade = 0;
+uint32_t lighting_up_start = 0; // Start time for lighting up phase
 bool button_held = false;
 int animation_cycles = 0;
 bool reset_called = false;
@@ -46,6 +48,7 @@ void resetAnimation()
     last_update = 0;
     hold_start = 0;
     hold_start_after_fade = 0;
+    lighting_up_start = 0;
     state = IDLE;
     fade_brightness = BRIGHTNESS;
     FastLED.setBrightness(BRIGHTNESS);
@@ -66,6 +69,7 @@ void startAnimation()
     FastLED.clear();
     FastLED.setBrightness(BRIGHTNESS);
     FastLED.show();
+    lighting_up_start = millis();
     Serial.println("Animation started");
 }
 
@@ -73,22 +77,26 @@ void runIndicatorAnimation()
 {
     uint32_t now = millis();
 
-    if (now - last_update > animation_logic_speed) 
+    if (now - last_update > animation_logic_delay) 
     {
         last_update = now;
 
         switch (state) 
         {
             case LIGHTING_UP:
-                leds[current_led] = CRGB::Orange;
-                FastLED.show();
-
-                current_led++;
-                if (current_led >= NUM_LEDS) 
+                if (now - lighting_up_start >= lighting_up_delay) 
                 {
-                    state = HOLDING;
-                    hold_start = now;
-                    Serial.println("All LEDs lit. Starting hold...");
+                    leds[current_led] = CRGB::Orange;
+                    FastLED.show();
+                    lighting_up_start = now; // Reset the start time
+
+                    current_led++;
+                    if (current_led >= NUM_LEDS) 
+                    {
+                        state = HOLDING;
+                        hold_start = now;
+                        Serial.println("All LEDs lit. Starting hold...");
+                    }
                 }
                 break;
 
@@ -131,8 +139,8 @@ void runIndicatorAnimation()
                         state = LIGHTING_UP;
                         current_led = 0; // Reset current_led for the next cycle
                         FastLED.clear(); // Clear the strip before starting the new cycle
+                        lighting_up_start = now; // Reset the start time
                         Serial.println("Hold after fade complete. Starting new cycle...");
-                        Serial.println("");
                     } 
                     else 
                     {
