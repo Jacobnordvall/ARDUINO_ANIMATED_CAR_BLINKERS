@@ -15,8 +15,11 @@ const int min_cycles = 3; // Minimum number of animation cycles per click
 const uint32_t hold_duration = 150; // Duration for which the strip should be held fully lit
 const uint32_t hold_after_fade_duration = 200; // Duration for which the strip should be held dark after fading to black
 const uint8_t fade_speed = 10; // Speed of fading after being fully lit and held
-const uint32_t lighting_up_delay = 20; // Delay in milliseconds between lighting up each LED
+const uint32_t lighting_up_delay = 10; // Delay in milliseconds between lighting up each LED
 const uint8_t animation_logic_delay = 5; // time between each ledstrip update in ms (lower is faster, but also heavier)
+
+// Define the color for the animation
+CRGB animationColor = CRGB(255, 100, 0); // You want the amber color. led strips are inacurate as f**k so tune it bye eye.
 
 enum AnimationState 
 {
@@ -86,7 +89,7 @@ void runIndicatorAnimation()
             case LIGHTING_UP:
                 if (now - lighting_up_start >= lighting_up_delay) 
                 {
-                    leds[current_led] = CRGB::Orange;
+                    leds[current_led] = animationColor;
                     FastLED.show();
                     lighting_up_start = now; // Reset the start time
 
