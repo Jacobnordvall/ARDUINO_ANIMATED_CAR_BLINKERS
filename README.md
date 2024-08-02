@@ -1,10 +1,10 @@
-# ARDUINO_ANIMATED_CAR_BLINKERS
+# ARDUINO_ANIMATED_CAR_LIGHTING
 
-Diy modern animated car indicators with a led strip (i used a ws2812b). <br>
+Diy modern animated car lighting system using adressable ledstrips (I used ws2812b strips). <br>
 <br>
-Fills the led strip from the inside out progressively and then fades out, and repeats. just like on modern cars.
+-
 <br>
-<br>
+
 
 **IMPORTANT:**
 - Cars use 12v!
@@ -14,13 +14,27 @@ Fills the led strip from the inside out progressively and then fades out, and re
 <br>
 
 **GOOD TO KNOW:**
-- This uses one output data pin for the animation. 
-- Short input = cycle 3 times. Long input = cycle until released.
+- This uses one output data pin for the blinkers. 
+<br>
+ Short input = cycle 3 times. Long input = cycle until released.
+<br>
+<br>
 - Made in vscode using platformio.
 <br>
 <br>
 
-**HOW TO USE:**
+**FEATURES:**
+-  INDICATORS:
+<br>Fills the led strip from the inside out progressively and then fades out, and repeats. just like on modern cars.
+<br>
+<br>
+BRAKES:
+<br>
+Runs in DRL mode until low brake input is detected, Then it fills the strip at max brightness from the middle out to the sides simultaneously (and holds it). IF high brake is detected while low brake is also, then it will flash.
+<br>
+<br>
+
+**HOW TO USE INDICATORS:**
 
 - Option 1: <br>
 one microcontroller per light. <br>
@@ -36,3 +50,13 @@ Both sides have their own relays to trigger that specifc indicator ledstrip. bot
 
 - Option 3 <br>
 Modify the code :)
+<br>
+<br>
+
+**TODO LIST:**
+- 
+- Startup animation when it gets powered on.
+- Option for Front DRLs.
+- Reverse light.
+- Fix variable naming (got a bit confusing when i decided to add more than just indicators)
+- Cleaning up the code when im satisfied with the features.
