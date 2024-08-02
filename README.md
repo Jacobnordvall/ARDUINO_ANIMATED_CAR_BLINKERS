@@ -56,4 +56,4 @@ Modify the code :)
 - Option for Front DRLs.
 - Reverse light.
 - Fix variable naming (got a bit confusing when i decided to add more than just indicators)
-- Cleaning up the code when im satisfied with the features.
+- Cleaning up the code when im satisfied with the features...
