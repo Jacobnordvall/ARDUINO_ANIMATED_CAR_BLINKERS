@@ -26,8 +26,7 @@ Diy modern animated car lighting system using adressable ledstrips (I used ws281
 <br>Fills the led strip from the inside out progressively and then fades out, and repeats. just like on modern cars.
 
 - BRAKES:
-<br>
-Runs in DRL mode until low brake input is detected, Then it fills the strip at max brightness from the middle out to the sides simultaneously (and holds it). IF high brake is detected while low brake is also, then it will flash.
+<br>Runs in DRL mode until low brake input is detected, Then it fills the strip at max brightness from the middle out to the sides simultaneously (and holds it). IF high brake is detected while low brake is also, then it will flash.
 <br>
 <br>
 

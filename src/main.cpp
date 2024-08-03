@@ -2,7 +2,7 @@
 #include <FastLED.h>
 
 // Input pins (Pins to trigger..)
-#define INDICATOR_PIN 3
+#define INDICATOR_PIN 7
 #define LOWBRAKE_PIN 2    
 #define HIGHBRAKE_PIN 3
 
@@ -42,6 +42,11 @@ const uint8_t brake_logic_delay = 5; // Time between each brake ledstrip update 
 const CRGB indicator_color = CRGB(255, 100, 0); // You want the amber color. Led strips are inaccurate, so tune it by eye.
 const CRGB brake_color = CRGB(255, 0, 0); // Brakes are red indeed.
 
+// Bootup anim configs
+#define ENABLE_BRAKE_BOOTUP true // Set to true to enable bootup animation, false to disable
+#define BRAKE_BOOTUP_SPEED 15 // Delay to make it run slower (ms)
+#define BRAKE_NUM_TRAVELING_LEDS 3 // Set the number of LEDs traveling on each side
+
 // CONFIG END ==============================================================================================================
 
 
@@ -60,6 +65,9 @@ enum INDICATOR_STATE : uint8_t
 
 enum BRAKE_STATE : uint8_t
 {
+    BRAKE_BOOTUP_STAGE_1,
+    BRAKE_BOOTUP_STAGE_2,
+    BRAKE_BOOTUP_STAGE_3,
     BRAKE_DRL_MODE,
     BRAKE_FILLING,
     BRAKE_HOLDING,
@@ -84,6 +92,11 @@ uint8_t currentLedIndex = 0;
 uint32_t lastUpdate = 0;
 uint32_t flashLastUpdate = 0;
 bool flashState = false;
+
+// Brake bootup animation variables
+uint8_t bootup_led_index = 0;
+uint8_t bootup_stage = 1;
+uint32_t bootup_lastUpdate = 0;
 
 const float gamma = 2.2; // Gamma correction factor (typically between 2.2 and 2.8 for LEDs)
 inline uint8_t gammaCorrection(uint8_t value) 
@@ -294,6 +307,94 @@ void runBrakeAnimation()
     }
 }
 
+void runBrakeBootupAnimation() 
+{
+    uint32_t now = millis();
+
+    // Stage 1: Pairs of LEDs moving towards the center from each side
+    if (bootup_stage == 1) 
+    {
+        if (now - bootup_lastUpdate >= BRAKE_BOOTUP_SPEED) 
+        {
+            bootup_lastUpdate = now;
+            fill_solid(brake_leds, BRAKE_NUM_LEDS, CRGB::Black); // Keep background black
+            int mid = BRAKE_NUM_LEDS / 2;
+
+            // Left side LEDs moving towards center
+            for (int i = 0; i < BRAKE_NUM_TRAVELING_LEDS; i++) 
+            {
+                if (bootup_led_index + i < mid) 
+                { brake_leds[bootup_led_index + i] = adjustBrightness(brake_color, BRIGHTNESS_BRAKE_DRL / 2); }
+            }
+
+            // Right side LEDs moving towards center
+            for (int i = 0; i < BRAKE_NUM_TRAVELING_LEDS; i++) 
+            {
+                if (BRAKE_NUM_LEDS - 1 - bootup_led_index - i >= mid) 
+                { brake_leds[BRAKE_NUM_LEDS - 1 - bootup_led_index - i] = adjustBrightness(brake_color, BRIGHTNESS_BRAKE_DRL / 2); }
+            }
+
+            FastLED.show();
+            bootup_led_index++;
+
+            // Check if the LEDs have reached the center
+            if (bootup_led_index >= mid - BRAKE_NUM_TRAVELING_LEDS) 
+            {
+                bootup_stage = 2;
+                bootup_led_index = 0;
+                Serial.println(F("Transition to Bootup Stage 2"));
+            }
+        }
+    } 
+    // Stage 2: Fill outwards from the middle at half DRL brightness
+    else if (bootup_stage == 2) 
+    {
+        if (now - bootup_lastUpdate >= BRAKE_BOOTUP_SPEED) 
+        {
+            bootup_lastUpdate = now;
+            int mid = BRAKE_NUM_LEDS / 2;
+
+            if (bootup_led_index <= mid) 
+            {
+                brake_leds[mid - bootup_led_index] = adjustBrightness(brake_color, BRIGHTNESS_BRAKE_DRL / 2);
+                brake_leds[mid + bootup_led_index] = adjustBrightness(brake_color, BRIGHTNESS_BRAKE_DRL / 2);
+                bootup_led_index++;
+                FastLED.show();
+            } 
+            else 
+            {
+                bootup_stage = 3;
+                bootup_led_index = 0;
+                Serial.println(F("Transition to Bootup Stage 3"));
+            }
+        }
+    } 
+    // Stage 3: Fill outwards from the middle at full DRL brightness over the half brightness
+    else if (bootup_stage == 3) 
+    {
+        if (now - bootup_lastUpdate >= BRAKE_BOOTUP_SPEED) 
+        {
+            bootup_lastUpdate = now;
+            int mid = BRAKE_NUM_LEDS / 2;
+
+            if (bootup_led_index <= mid) 
+            {
+                brake_leds[mid - bootup_led_index] = adjustBrightness(brake_color, BRIGHTNESS_BRAKE_DRL);
+                brake_leds[mid + bootup_led_index] = adjustBrightness(brake_color, BRIGHTNESS_BRAKE_DRL);
+                bootup_led_index++;
+                FastLED.show();
+            } 
+            else 
+            {
+                // Animation complete, move to DRL mode
+                brakeState = BRAKE_DRL_MODE;
+                bootup_stage = 0; // Reset stage
+                bootup_led_index = 0;
+                Serial.println(F("Bootup animation complete. Entering DRL_MODE"));
+            }
+        }
+    }
+}
 
 // Setup and loop ============================================================
 void setup() 
@@ -310,12 +411,34 @@ void setup()
 
     // Initialize brake LED strip
     FastLED.addLeds<BRAKE_LED_TYPE, BRAKE_LED_PIN, BRAKE_COLOR_ORDER>(brake_leds, BRAKE_NUM_LEDS).setCorrection(TypicalLEDStrip);
-    fill_solid(brake_leds, BRAKE_NUM_LEDS, adjustBrightness(brake_color, BRIGHTNESS_BRAKE_DRL)); // Set initial DRL brightness
-    FastLED.show();
+
+    if (ENABLE_BRAKE_BOOTUP) 
+    {
+        bootup_stage = 1;
+        bootup_led_index = 0;
+        bootup_lastUpdate = millis();
+        Serial.println(F("Starting Bootup Animation"));
+    } 
+    else 
+    {
+        fill_solid(brake_leds, BRAKE_NUM_LEDS, adjustBrightness(brake_color, BRIGHTNESS_BRAKE_DRL)); // Set initial DRL brightness
+        FastLED.show();
+        brakeState = BRAKE_DRL_MODE;
+        Serial.println(F("Bootup Animation Disabled. Entering DRL_MODE"));
+    }
 }
 
 void loop() 
 {
+    // Bootup Animation
+    if (ENABLE_BRAKE_BOOTUP && bootup_stage > 0) 
+    {
+        runBrakeBootupAnimation();
+        return; // Exit the loop early if the bootup animation is running
+    }
+
+    // If the bootup animation is complete or disabled, proceed with regular operation
+
     // Indicators =============================================
 
     static bool previous_state = HIGH; // Stores the previous state of the indicator button
