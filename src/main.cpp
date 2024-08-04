@@ -9,21 +9,26 @@
 // Output pins (Ledstrip data out)
 #define INDICATOR_LED_PIN 6
 #define BRAKE_LED_PIN 5
+#define FRONTDRL_LED_PIN 4
 
 // Led counts (Don't forget to tune the animations for your led count)
 #define INDICATOR_NUM_LEDS 25
 #define BRAKE_NUM_LEDS 58
+#define FRONTDRL_NUM_LEDS 25
 
 // Led strip config
 #define INDICATOR_LED_TYPE WS2812B // What led strip are you using?
 #define INDICATOR_COLOR_ORDER GRB // LED order on your strip
 #define BRAKE_LED_TYPE WS2812B   // What led strip are you using?
 #define BRAKE_COLOR_ORDER GRB   // LED order on your strip
+#define FRONTDRL_LED_TYPE WS2812B // What led strip are you using?
+#define FRONTDRL_COLOR_ORDER GRB  // LED order on your strip
 
 // Brightness levels
 #define BRIGHTNESS_INDICATORS 255  // 1-255
 #define BRIGHTNESS_BRAKE_DRL 64   // 1-255
 #define BRIGHTNESS_BRAKE_MAX 255 // 1-255
+#define BRIGHTNESS_FRONTDRL 255 // 1-255
 
 // Indicators anim config
 const uint8_t min_cycles = 3; // Minimum number of animation cycles per click
@@ -40,12 +45,15 @@ const uint8_t brake_logic_delay = 5; // Time between each brake ledstrip update 
 
 // Colors
 const CRGB indicator_color = CRGB(255, 100, 0); // You want the amber color. Led strips are inaccurate, so tune it by eye.
-const CRGB brake_color = CRGB(255, 0, 0); // Brakes are red indeed.
+const CRGB brake_color = CRGB(255, 0, 0);      // Brakes are red indeed.
+const CRGB frontDRL_color = CRGB::White;      // Color for the front DRL strip
 
 // Bootup anim configs
 #define ENABLE_BRAKE_BOOTUP true // Set to true to enable bootup animation, false to disable
 #define BRAKE_BOOTUP_SPEED 15 // Delay to make it run slower (ms)
 #define BRAKE_NUM_TRAVELING_LEDS 3 // Set the number of LEDs traveling on each side
+#define ENABLE_FRONTDRL_BOOTUP true // Set to true to enable bootup animation, false to disable
+#define FRONTDRL_BOOTUP_SPEED 20 // Delay to make it run slower (ms)
 
 // CONFIG END ==============================================================================================================
 
@@ -53,6 +61,7 @@ const CRGB brake_color = CRGB(255, 0, 0); // Brakes are red indeed.
 // LED arrays
 CRGB indicator_leds[INDICATOR_NUM_LEDS];
 CRGB brake_leds[BRAKE_NUM_LEDS];
+CRGB frontDRL_leds[FRONTDRL_NUM_LEDS];
 
 enum INDICATOR_STATE : uint8_t 
 {
@@ -74,6 +83,13 @@ enum BRAKE_STATE : uint8_t
     BRAKE_HIGHBRAKE_FLASHING
 };
 
+enum FRONTDRL_STATE : uint8_t 
+{
+    FRONTDRL_BOOTUP_STAGE_1,
+    FRONTDRL_BOOTUP_STAGE_2,
+    FRONTDRL_ON
+};
+
 // Indicator variables
 INDICATOR_STATE indicatorState = INDICATOR_IDLE;
 uint8_t current_led = 0;
@@ -92,11 +108,15 @@ uint8_t currentLedIndex = 0;
 uint32_t lastUpdate = 0;
 uint32_t flashLastUpdate = 0;
 bool flashState = false;
-
-// Brake bootup animation variables
 uint8_t bootup_led_index = 0;
 uint8_t bootup_stage = 1;
 uint32_t bootup_lastUpdate = 0;
+
+// Front DRL variables
+FRONTDRL_STATE frontDRLState = FRONTDRL_BOOTUP_STAGE_1;
+uint8_t frontDRLCurrentLedIndex = 0;
+uint32_t frontDRLLastUpdate = 0;
+uint8_t frontDRLBootupStage = 1;  // 1 for first half brightness, 2 for full brightness
 
 const float gamma = 2.2; // Gamma correction factor (typically between 2.2 and 2.8 for LEDs)
 inline uint8_t gammaCorrection(uint8_t value) 
@@ -396,6 +416,57 @@ void runBrakeBootupAnimation()
     }
 }
 
+// Front DRLs ================================================================
+void runFrontDRLBootupAnimation() 
+{
+    uint32_t now = millis();
+
+    if (frontDRLBootupStage == 1) 
+    {
+        if (now - frontDRLLastUpdate >= FRONTDRL_BOOTUP_SPEED) 
+        {
+            frontDRLLastUpdate = now;
+
+            if (frontDRLCurrentLedIndex < FRONTDRL_NUM_LEDS) 
+            {
+                frontDRL_leds[FRONTDRL_NUM_LEDS - 1 - frontDRLCurrentLedIndex] = adjustBrightness(frontDRL_color, BRIGHTNESS_FRONTDRL / 2);
+                FastLED.show();
+                frontDRLCurrentLedIndex++;
+            } 
+            else 
+            {
+                frontDRLBootupStage = 2;
+                frontDRLCurrentLedIndex = 0;
+                Serial.println(F("Front DRL Bootup Transition to Stage 2"));
+            }
+        }
+    } 
+    else if (frontDRLBootupStage == 2) 
+    {
+        if (now - frontDRLLastUpdate >= FRONTDRL_BOOTUP_SPEED) 
+        {
+            frontDRLLastUpdate = now;
+
+            if (frontDRLCurrentLedIndex < FRONTDRL_NUM_LEDS) 
+            {
+                frontDRL_leds[FRONTDRL_NUM_LEDS - 1 - frontDRLCurrentLedIndex] = adjustBrightness(frontDRL_color, BRIGHTNESS_FRONTDRL);
+                FastLED.show();
+                frontDRLCurrentLedIndex++;
+            } 
+            else 
+            {
+                frontDRLBootupStage = 0;
+                frontDRLCurrentLedIndex = 0;
+                frontDRLState = FRONTDRL_ON; // Correctly set the state to ON
+                fill_solid(frontDRL_leds, FRONTDRL_NUM_LEDS, adjustBrightness(frontDRL_color, BRIGHTNESS_FRONTDRL)); // Ensure the strip stays lit at full brightness
+                FastLED.show();
+                Serial.println(F("Front DRL Bootup Animation Complete. Entering ON state"));
+            }
+        }
+    }
+}
+
+
 // Setup and loop ============================================================
 void setup() 
 {
@@ -417,76 +488,114 @@ void setup()
         bootup_stage = 1;
         bootup_led_index = 0;
         bootup_lastUpdate = millis();
-        Serial.println(F("Starting Bootup Animation"));
+        Serial.println(F("Starting Brake Bootup Animation"));
     } 
     else 
     {
         fill_solid(brake_leds, BRAKE_NUM_LEDS, adjustBrightness(brake_color, BRIGHTNESS_BRAKE_DRL)); // Set initial DRL brightness
         FastLED.show();
         brakeState = BRAKE_DRL_MODE;
-        Serial.println(F("Bootup Animation Disabled. Entering DRL_MODE"));
+        Serial.println(F("Brake Bootup Animation Disabled. Entering DRL_MODE"));
+    }
+
+    // Initialize front DRL LED strip
+    FastLED.addLeds<FRONTDRL_LED_TYPE, FRONTDRL_LED_PIN, FRONTDRL_COLOR_ORDER>(frontDRL_leds, FRONTDRL_NUM_LEDS).setCorrection(TypicalLEDStrip);
+
+    if (ENABLE_FRONTDRL_BOOTUP)
+    {
+        frontDRLBootupStage = 1;
+        frontDRLCurrentLedIndex = 0;
+        frontDRLLastUpdate = millis();
+        Serial.println(F("Starting Front DRL Bootup Animation"));
+    }
+    else
+    {
+        fill_solid(frontDRL_leds, FRONTDRL_NUM_LEDS, CRGB::White); // Set initial DRL brightness
+        FastLED.show();
+        frontDRLState = FRONTDRL_ON;
+        Serial.println(F("Front DRL Bootup Animation Disabled. Entering ON state"));
     }
 }
 
+bool isBootupComplete = false; // Flag to indicate bootup completion
 void loop() 
 {
-    // Bootup Animation
-    if (ENABLE_BRAKE_BOOTUP && bootup_stage > 0) 
+ // Bootup Animation
+       if (!isBootupComplete) 
     {
-        runBrakeBootupAnimation();
-        return; // Exit the loop early if the bootup animation is running
+        // Run brake bootup animation if enabled and not yet complete
+        if (ENABLE_BRAKE_BOOTUP && bootup_stage > 0) 
+        {
+            runBrakeBootupAnimation();
+        }
+
+        // Run front DRL bootup animation if enabled and not yet complete
+        if (ENABLE_FRONTDRL_BOOTUP && (frontDRLState == FRONTDRL_BOOTUP_STAGE_1 || frontDRLState == FRONTDRL_BOOTUP_STAGE_2)) 
+        {
+            runFrontDRLBootupAnimation();
+        }
+
+        // Check if both bootup animations have completed
+        if ((!ENABLE_BRAKE_BOOTUP || bootup_stage == 0) &&
+            (!ENABLE_FRONTDRL_BOOTUP || frontDRLState == FRONTDRL_ON)) 
+        {
+            isBootupComplete = true; // All bootup animations are complete
+            Serial.println(F("All bootup animations complete. Entering normal operation."));
+        }
     }
-
-    // If the bootup animation is complete or disabled, proceed with regular operation
-
-    // Indicators =============================================
-
-    static bool previous_state = HIGH; // Stores the previous state of the indicator button
-    bool current_state = digitalRead(INDICATOR_PIN); // Reads the current state of the indicator button
-
-    if (previous_state == HIGH && current_state == LOW) 
+    else
     {
-        startAnimation();
-        button_held = true;
-        Serial.println(F("Input Start"));
-    }
+        // If the bootup animation is complete or disabled, proceed with regular operation
 
-    if (previous_state == LOW && current_state == HIGH) 
-    {
-        button_held = false;
-        Serial.println(F("Input Stop"));
-    }
+        // Indicators =============================================
 
-    previous_state = current_state;
+        static bool previous_state = HIGH;               // Stores the previous state of the indicator button
+        bool current_state = digitalRead(INDICATOR_PIN); // Reads the current state of the indicator button
 
-    if (indicatorState != INDICATOR_IDLE) 
-    { runIndicatorAnimation(); } 
-    else if (!reset_called) 
-    {
-        resetAnimation();
-        Serial.println(F("Finished and reset"));
-    }
+        if (previous_state == HIGH && current_state == LOW)
+        {
+            startAnimation();
+            button_held = true;
+            Serial.println(F("Indicators Input Start"));
+        }
 
-    // Brake ==================================================
-    
-    bool lowBrakePressed = !digitalRead(LOWBRAKE_PIN);
-    bool highBrakePressed = !digitalRead(HIGHBRAKE_PIN);
+        if (previous_state == LOW && current_state == HIGH)
+        {
+            button_held = false;
+            Serial.println(F("Indicators Input Stop"));
+        }
 
-    if (brakeState == BRAKE_DRL_MODE)
-    {
-        if (lowBrakePressed)
-        { handleLowBrake(); }
-    }
-    else if (brakeState == BRAKE_HOLDING)
-    {
-        if (highBrakePressed)
-        { handleHighBrake(); }
-        else if (!lowBrakePressed)
+        previous_state = current_state;
+
+        if (indicatorState != INDICATOR_IDLE)
+        { runIndicatorAnimation(); }
+        else if (!reset_called)
+        {
+            resetAnimation();
+            Serial.println(F("Indicators Finished and reset"));
+        }
+
+        // Brake ==================================================
+
+        bool lowBrakePressed = !digitalRead(LOWBRAKE_PIN);
+        bool highBrakePressed = !digitalRead(HIGHBRAKE_PIN);
+
+        if (brakeState == BRAKE_DRL_MODE)
+        {
+            if (lowBrakePressed)
+            { handleLowBrake(); }
+        }
+        else if (brakeState == BRAKE_HOLDING)
+        {
+            if (highBrakePressed)
+            { handleHighBrake(); }
+            else if (!lowBrakePressed)
+            { resetToDRLMode(); }
+        }
+        else if (brakeState == BRAKE_HIGHBRAKE_FLASHING && !lowBrakePressed && !highBrakePressed)
         { resetToDRLMode(); }
-    }
-    else if (brakeState == BRAKE_HIGHBRAKE_FLASHING && !lowBrakePressed && !highBrakePressed)
-    { resetToDRLMode(); }
 
-    if (brakeState != BRAKE_DRL_MODE)
-    { runBrakeAnimation(); }
+        if (brakeState != BRAKE_DRL_MODE)
+        { runBrakeAnimation(); }
+    }
 }
