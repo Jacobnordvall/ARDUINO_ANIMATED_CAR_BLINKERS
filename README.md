@@ -16,6 +16,9 @@ Diy modern animated car lighting system using adressable ledstrips (I used ws281
 **GOOD TO KNOW:**
 - This uses one output data pin for the blinkers. <br>
  Short input = cycle 3 times. Long input = cycle until released. 
+
+- If the strips act weird or wont work with long wire runs,
+<br>then you need a "Logic Level Converter" mosts strips expect a 5v signal. 
  
 - Made in vscode using platformio.
 <br>
