@@ -21,6 +21,8 @@ Diy modern animated car lighting system using adressable ledstrips (I used ws281
 <br>then you need a "Logic Level Converter" mosts strips expect a 5v signal. 
  
 - Made in vscode using platformio.
+
+- Uses the plugin "Better Comments" by Aaron Bond. (Makes the code more readable) 
 <br>
 <br>
 
