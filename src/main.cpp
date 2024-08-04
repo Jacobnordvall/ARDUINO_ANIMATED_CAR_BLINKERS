@@ -1,52 +1,76 @@
 #include <Arduino.h>
 #include <FastLED.h>
 
+//?     ___     _   __ ____ __  ___ ___   ______ ______ ____        ______ ___     ____         __     ____ ______ __  __ ______ ____ _   __ ______
+//?    /   |   / | / //  _//  |/  //   | /_  __// ____// __ \      / ____//   |   / __ \       / /    /  _// ____// / / //_  __//  _// | / // ____/
+//?   / /| |  /  |/ / / / / /|_/ // /| |  / /  / __/  / / / /     / /    / /| |  / /_/ /      / /     / / / / __ / /_/ /  / /   / / /  |/ // / __  
+//?  / ___ | / /|  /_/ / / /  / // ___ | / /  / /___ / /_/ /     / /___ / ___ | / _, _/      / /___ _/ / / /_/ // __  /  / /  _/ / / /|  // /_/ /  
+//? /_/ _|_|/_/ |_//___//_/  /_//_/  |_|/_/  /_____//_____/______\____//_/  |_|/_/_|_|______/_____//___/ \____//_/ /_/ _/_/_ /___//_/ |_/ \____/                                                  
+//?  _                      _____                     _           __                  _               _  _                                
+//? | |__   _   _           \__  \  __ _   ___  ___  | |__     /\ \ \  ___   _ __  __| |__   __ __ _ | || |                               
+//? | '_ \ | | | |             \ \ / _` | / __|/ _ \ | '_ \   /  \/ / / _ \ | '__|/ _` |\ \ / // _` || || |                               
+//? | |_) || |_| |          /\_/ /| (_| || (__||(_)| | |_)|  |/ /\ /  |(_)| | |  | (_| | \ V /| (_| || || |                               
+//? |_.__/  \__, |          \___/  \__,_| \___|\___/ |_.__/  \_\ \/   \___/ |_|   \__,_|  \_/  \__,_||_||_|                               
+//?         |___/                                                                                                                        
+//?                                                                                        
+
 // Input pins (Pins to trigger..)
 #define INDICATOR_PIN 7
 #define LOWBRAKE_PIN 2    
 #define HIGHBRAKE_PIN 3
+#define REVERSE_PIN 4
 
 // Output pins (Ledstrip data out)
-#define INDICATOR_LED_PIN 6
+#define INDICATOR_LED_PIN 9
 #define BRAKE_LED_PIN 5
-#define FRONTDRL_LED_PIN 4
+#define FRONTDRL_LED_PIN 6
+#define REVERSE_LED_PIN 8
 
 // Led counts (Don't forget to tune the animations for your led count)
-#define INDICATOR_NUM_LEDS 25
-#define BRAKE_NUM_LEDS 58
-#define FRONTDRL_NUM_LEDS 25
+#define INDICATOR_NUM_LEDS 25  // Can be whatever
+#define BRAKE_NUM_LEDS 58     // Preferably uneven for a centered anim. 
+#define FRONTDRL_NUM_LEDS 25 // Can be whatever
+#define REVERSE_NUM_LEDS 15 // Should be uneven.
 
 // Led strip config
 #define INDICATOR_LED_TYPE WS2812B // What led strip are you using?
 #define INDICATOR_COLOR_ORDER GRB // LED order on your strip
-#define BRAKE_LED_TYPE WS2812B   // What led strip are you using?
-#define BRAKE_COLOR_ORDER GRB   // LED order on your strip
-#define FRONTDRL_LED_TYPE WS2812B // What led strip are you using?
-#define FRONTDRL_COLOR_ORDER GRB  // LED order on your strip
+#define BRAKE_LED_TYPE WS2812B
+#define BRAKE_COLOR_ORDER GRB
+#define FRONTDRL_LED_TYPE WS2812B
+#define FRONTDRL_COLOR_ORDER GRB
+#define REVERSE_LED_TYPE WS2812B
+#define REVERSE_COLOR_ORDER GRB
 
 // Brightness levels
 #define BRIGHTNESS_INDICATORS 255  // 1-255
 #define BRIGHTNESS_BRAKE_DRL 64   // 1-255
 #define BRIGHTNESS_BRAKE_MAX 255 // 1-255
 #define BRIGHTNESS_FRONTDRL 255 // 1-255
+#define BRIGHTNESS_REVERSE 255 // 1-255 
 
 // Indicators anim config
 const uint8_t min_cycles = 3; // Minimum number of animation cycles per click
-const uint32_t lighting_up_delay = 10; // Delay in milliseconds between lighting up each LED
+const uint32_t lighting_up_delay = 10; // Delay in ms between lighting up each LED
 const uint32_t hold_after_lit_duration = 150; // Duration for which the strip should be held fully lit
 const uint8_t fade_speed = 10; // Speed of fading after being fully lit and held
 const uint32_t hold_after_fade_duration = 200; // Duration for which the strip should be held dark after fading to black
-const uint8_t indicator_logic_delay = 5; // Time between each ledstrip update in ms (lower is faster, but also heavier)
+const uint8_t indicator_logic_delay = 5; // Time between each ledstrip update in ms (5ms = 200fps)
 
 // Brake anim config
 #define FILL_SPEED 1   // Time in ms between lighting up each LED (1-20)
 #define FLASH_SPEED 200 // Time in ms for flashing in high brake state
-const uint8_t brake_logic_delay = 5; // Time between each brake ledstrip update in ms
+const uint8_t brake_logic_delay = 5; // Time between each brake ledstrip update in ms (5ms = 200fps)
+
+// Reverse anim config
+const uint32_t reverse_animation_delay = 15;  // Time in ms between each LED in animation
+const uint8_t reverse_logic_delay = 5;  // Time between each ledstrip update in ms  (5ms = 200fps)
 
 // Colors
 const CRGB indicator_color = CRGB(255, 100, 0); // You want the amber color. Led strips are inaccurate, so tune it by eye.
 const CRGB brake_color = CRGB(255, 0, 0);      // Brakes are red indeed.
 const CRGB frontDRL_color = CRGB::White;      // Color for the front DRL strip
+const CRGB reverse_color = CRGB::White;      // Color for the reverse light
 
 // Bootup anim configs
 #define ENABLE_BRAKE_BOOTUP true // Set to true to enable bootup animation, false to disable
@@ -56,12 +80,14 @@ const CRGB frontDRL_color = CRGB::White;      // Color for the front DRL strip
 #define FRONTDRL_BOOTUP_SPEED 20 // Delay to make it run slower (ms)
 
 // CONFIG END ==============================================================================================================
-
+// =========================================================================================================================
+// CONFIG END ==============================================================================================================
 
 // LED arrays
 CRGB indicator_leds[INDICATOR_NUM_LEDS];
 CRGB brake_leds[BRAKE_NUM_LEDS];
 CRGB frontDRL_leds[FRONTDRL_NUM_LEDS];
+CRGB reverse_leds[REVERSE_NUM_LEDS];
 
 enum INDICATOR_STATE : uint8_t 
 {
@@ -90,6 +116,15 @@ enum FRONTDRL_STATE : uint8_t
     FRONTDRL_ON
 };
 
+enum REVERSE_STATE : uint8_t 
+{
+    REVERSE_IDLE,
+    REVERSE_LIGHTING_UP,
+    REVERSE_HOLDING,
+    REVERSE_TURNING_OFF
+};
+
+// non config variables ======================================================
 // Indicator variables
 INDICATOR_STATE indicatorState = INDICATOR_IDLE;
 uint8_t current_led = 0;
@@ -118,6 +153,14 @@ uint8_t frontDRLCurrentLedIndex = 0;
 uint32_t frontDRLLastUpdate = 0;
 uint8_t frontDRLBootupStage = 1;  // 1 for first half brightness, 2 for full brightness
 
+// Reverse light variables
+REVERSE_STATE reverseState = REVERSE_IDLE;
+uint8_t current_reverse_led = 0;
+uint32_t reverse_last_update = 0;
+uint32_t reverse_lighting_up_start = 0;
+bool reverse_input_active = false;
+
+// Helper functions ==========================================================
 const float gamma = 2.2; // Gamma correction factor (typically between 2.2 and 2.8 for LEDs)
 inline uint8_t gammaCorrection(uint8_t value) 
 { return (uint8_t)(255.0 * pow((value / 255.0), gamma)); }
@@ -466,13 +509,103 @@ void runFrontDRLBootupAnimation()
     }
 }
 
+// Reverse light =============================================================
+void startReverseAnimation() 
+{
+    if (reverseState != REVERSE_IDLE)
+    return;
 
-// Setup and loop ============================================================
+    reverseState = REVERSE_LIGHTING_UP;
+    current_reverse_led = 0;
+    fill_solid(reverse_leds, REVERSE_NUM_LEDS, CRGB::Black); // Ensure all LEDs are off initially
+    FastLED.show();
+    reverse_lighting_up_start = millis();
+    Serial.println(F("Reverse Animation started"));
+}
+
+void runReverseAnimation() 
+{
+    uint32_t now = millis();
+
+    if (now - reverse_last_update > reverse_logic_delay) 
+    {
+        reverse_last_update = now;
+
+        switch (reverseState) 
+        {
+            case REVERSE_LIGHTING_UP:
+                if (now - reverse_lighting_up_start >= reverse_animation_delay) 
+                {
+                    int mid = REVERSE_NUM_LEDS / 2;
+                    if (current_reverse_led < mid) 
+                    {
+                        reverse_leds[mid - current_reverse_led] = adjustBrightness(reverse_color, BRIGHTNESS_REVERSE);
+                        reverse_leds[mid + current_reverse_led] = adjustBrightness(reverse_color, BRIGHTNESS_REVERSE);
+                        FastLED.show();
+                        reverse_lighting_up_start = now; // Reset the start time
+                        current_reverse_led++;
+                    } 
+                    else 
+                    {
+                        // Ensure the last LEDs are lit
+                        reverse_leds[0] = adjustBrightness(reverse_color, BRIGHTNESS_REVERSE);
+                        reverse_leds[REVERSE_NUM_LEDS - 1] = adjustBrightness(reverse_color, BRIGHTNESS_REVERSE);
+                        FastLED.show();
+                        reverseState = REVERSE_HOLDING;
+                        Serial.println(F("All reverse LEDs lit. Holding..."));
+                    }
+                }
+                break;
+
+            case REVERSE_HOLDING:
+                if (!reverse_input_active) 
+                {
+                    reverseState = REVERSE_TURNING_OFF;
+                    current_reverse_led = 0;  // Reset for turning off
+                    reverse_lighting_up_start = now; // Reset the start time
+                    Serial.println(F("Reverse input stopped. Turning off..."));
+                }
+                break;
+
+            case REVERSE_TURNING_OFF:
+                if (now - reverse_lighting_up_start >= reverse_animation_delay) 
+                {
+                    int mid = REVERSE_NUM_LEDS / 2;
+                    if (current_reverse_led < mid) 
+                    {
+                        reverse_leds[mid - current_reverse_led] = CRGB::Black;
+                        reverse_leds[mid + current_reverse_led] = CRGB::Black;
+                        FastLED.show();
+                        reverse_lighting_up_start = now; // Reset the start time
+                        current_reverse_led++;
+                    } 
+                    else 
+                    {
+                        // Ensure the last LEDs are turned off
+                        reverse_leds[0] = CRGB::Black;
+                        reverse_leds[REVERSE_NUM_LEDS - 1] = CRGB::Black;
+                        FastLED.show();
+                        reverseState = REVERSE_IDLE;
+                        Serial.println(F("Reverse animation complete. All LEDs off."));
+                    }
+                }
+                break;
+
+            default:
+                break;
+        }
+    }
+}
+
+
+
+// Setup =====================================================================
 void setup() 
 {
     pinMode(INDICATOR_PIN, INPUT_PULLUP);
     pinMode(LOWBRAKE_PIN, INPUT_PULLUP);
     pinMode(HIGHBRAKE_PIN, INPUT_PULLUP);
+    pinMode(REVERSE_PIN, INPUT_PULLUP);
     Serial.begin(9600);
 
     // Initialize indicator LED strip
@@ -515,8 +648,14 @@ void setup()
         frontDRLState = FRONTDRL_ON;
         Serial.println(F("Front DRL Bootup Animation Disabled. Entering ON state"));
     }
+
+    // Initialize reverse light LED strip
+    FastLED.addLeds<REVERSE_LED_TYPE, REVERSE_LED_PIN, REVERSE_COLOR_ORDER>(reverse_leds, REVERSE_NUM_LEDS).setCorrection(TypicalLEDStrip);
+    fill_solid(reverse_leds, REVERSE_NUM_LEDS, CRGB::Black); // Ensure all LEDs are off initially
+    FastLED.show();
 }
 
+// Loop ======================================================================
 bool isBootupComplete = false; // Flag to indicate bootup completion
 void loop() 
 {
@@ -548,7 +687,6 @@ void loop()
         // If the bootup animation is complete or disabled, proceed with regular operation
 
         // Indicators =============================================
-
         static bool previous_state = HIGH;               // Stores the previous state of the indicator button
         bool current_state = digitalRead(INDICATOR_PIN); // Reads the current state of the indicator button
 
@@ -576,7 +714,6 @@ void loop()
         }
 
         // Brake ==================================================
-
         bool lowBrakePressed = !digitalRead(LOWBRAKE_PIN);
         bool highBrakePressed = !digitalRead(HIGHBRAKE_PIN);
 
@@ -597,5 +734,23 @@ void loop()
 
         if (brakeState != BRAKE_DRL_MODE)
         { runBrakeAnimation(); }
+
+        // Reverse light ===============================================        
+        static bool previous_reverse_state = HIGH;             // Stores the previous state of the reverse button
+        bool current_reverse_state = digitalRead(REVERSE_PIN); // Reads the current state of the reverse button
+
+        if (previous_reverse_state == HIGH && current_reverse_state == LOW)
+        {
+            startReverseAnimation();
+            reverse_input_active = true;
+        }
+
+        if (previous_reverse_state == LOW && current_reverse_state == HIGH)
+        { reverse_input_active = false; }
+
+        previous_reverse_state = current_reverse_state;
+
+        if (reverseState != REVERSE_IDLE)
+        { runReverseAnimation(); }
     }
 }

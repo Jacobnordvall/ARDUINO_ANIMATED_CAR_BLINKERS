@@ -31,6 +31,10 @@ Diy modern animated car lighting system using adressable ledstrips (I used ws281
 -  FRONT DRL:
 <br>Static white. has optional bootup animation.
 
+-  REVERSE LIGHT:
+<br>Animates on and animates off. 
+<br>fills from the middle and out to the sides and then turns off from the middle and out.
+
 - BRAKES + DRL:
 <br>Runs in DRL mode until low brake input is detected, Then it fills the strip at max brightness from the middle out to the sides simultaneously (and holds it). IF high brake is detected while low brake is also, then it will flash. has optional bootup animation.
 <br>
@@ -60,6 +64,6 @@ Modify the code :)
 - ~~Startup animation when it gets powered on.~~  DONE
 - ~~Option for Front DRLs.~~  DONE
 - Option for flashing indicators once on unlock and only run bootup on final ignition. (for diy vehicles)
-- Reverse light.
+- ~~Reverse light.~~  DONE
 - Fix variable naming (got a bit confusing when i decided to add more than just indicators)
 - Cleaning up the code when im satisfied with the features...
