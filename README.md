@@ -69,7 +69,6 @@ Modify the code :)
 <br>
 <br>
 - Separate inputs for blinkers and the option to integrate a relay from the esp itself easily instead.
-
 - Option for flashing indicators once on unlock and only run bootup on final ignition. (for diy vehicles)
 - Fix variable naming (got a bit confusing when i decided to add more than just indicators)
 - Cleaning up the code when im satisfied with the features...
