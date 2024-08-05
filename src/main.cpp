@@ -51,10 +51,10 @@
 
 //* Indicators anim config
 const uint8_t min_cycles = 3; // Minimum number of animation cycles per click
-const uint32_t lighting_up_delay = 10; // Delay in ms between lighting up each LED
-const uint32_t hold_after_lit_duration = 150; // Duration for which the strip should be held fully lit
+const uint8_t lighting_up_delay = 10; // Delay in ms between lighting up each LED
+const uint16_t hold_after_lit_duration = 150; // Duration for which the strip should be held fully lit
 const uint8_t fade_speed = 10; // Speed of fading after being fully lit and held
-const uint32_t hold_after_fade_duration = 200; // Duration for which the strip should be held dark after fading to black
+const uint16_t hold_after_fade_duration = 200; // Duration for which the strip should be held dark after fading to black
 const uint8_t indicator_logic_delay = 5; // Time between each ledstrip update in ms (5ms = 200fps)
 
 //* Brake anim config
@@ -63,7 +63,7 @@ const uint8_t indicator_logic_delay = 5; // Time between each ledstrip update in
 const uint8_t brake_logic_delay = 5; // Time between each brake ledstrip update in ms (5ms = 200fps)
 
 //* Reverse anim config
-const uint32_t reverse_animation_delay = 15;  // Time in ms between each LED in animation
+const uint8_t reverse_animation_delay = 15;  // Time in ms between each LED in animation
 const uint8_t reverse_logic_delay = 5;  // Time between each ledstrip update in ms  (5ms = 200fps)
 
 //* Colors
@@ -660,20 +660,16 @@ void setup()
 bool isBootupComplete = false; // Flag to indicate bootup completion
 void loop() 
 {
- // Bootup Animation
-       if (!isBootupComplete) 
+    // Bootup Animation
+    if (!isBootupComplete) 
     {
         // Run brake bootup animation if enabled and not yet complete
         if (ENABLE_BRAKE_BOOTUP && bootup_stage > 0) 
-        {
-            runBrakeBootupAnimation();
-        }
+        { runBrakeBootupAnimation(); }
 
         // Run front DRL bootup animation if enabled and not yet complete
         if (ENABLE_FRONTDRL_BOOTUP && (frontDRLState == FRONTDRL_BOOTUP_STAGE_1 || frontDRLState == FRONTDRL_BOOTUP_STAGE_2)) 
-        {
-            runFrontDRLBootupAnimation();
-        }
+        { runFrontDRLBootupAnimation(); }
 
         // Check if both bootup animations have completed
         if ((!ENABLE_BRAKE_BOOTUP || bootup_stage == 0) &&
