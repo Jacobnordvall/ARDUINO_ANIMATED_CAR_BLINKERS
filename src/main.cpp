@@ -162,9 +162,9 @@ uint32_t reverse_lighting_up_start = 0;
 bool reverse_input_active = false;
 
 //* Helper functions ==========================================================
-const float gamma = 2.2; // Gamma correction factor (typically between 2.2 and 2.8 for LEDs)
+const float gammaValue = 2.2; // Gamma correction factor (typically between 2.2 and 2.8 for LEDs)
 inline uint8_t gammaCorrection(uint8_t value) 
-{ return (uint8_t)(255.0 * pow((value / 255.0), gamma)); }
+{ return (uint8_t)(255.0 * pow((value / 255.0), gammaValue)); }
 
 // Adjust the brightness of a color
 inline CRGB adjustBrightness(const CRGB& color, uint8_t brightness) 
