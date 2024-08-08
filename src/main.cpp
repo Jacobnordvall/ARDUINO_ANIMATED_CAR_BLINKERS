@@ -15,16 +15,16 @@
 //?                                                                                        
 
 //* Input pins (Pins to trigger..)
-#define INDICATOR_PIN 7
-#define LOWBRAKE_PIN 2    
-#define HIGHBRAKE_PIN 3
-#define REVERSE_PIN 4
+#define INDICATOR_PIN 5
+#define LOWBRAKE_PIN 6   
+#define HIGHBRAKE_PIN 7
+#define REVERSE_PIN 8
 
 //* Output pins (Ledstrip data out)
-#define INDICATOR_LED_PIN 9
-#define BRAKE_LED_PIN 5
-#define FRONTDRL_LED_PIN 6
-#define REVERSE_LED_PIN 8
+#define INDICATOR_LED_PIN 10
+#define BRAKE_LED_PIN 27
+#define FRONTDRL_LED_PIN 28
+#define REVERSE_LED_PIN 11
 
 //* Led counts (Don't forget to tune the animations for your led count)
 #define INDICATOR_NUM_LEDS 25  // Can be whatever
@@ -603,10 +603,10 @@ void runReverseAnimation()
 //* Setup =====================================================================
 void setup() 
 {
-    pinMode(INDICATOR_PIN, INPUT_PULLUP);
-    pinMode(LOWBRAKE_PIN, INPUT_PULLUP);
-    pinMode(HIGHBRAKE_PIN, INPUT_PULLUP);
-    pinMode(REVERSE_PIN, INPUT_PULLUP);
+    pinMode(INDICATOR_PIN, INPUT_PULLDOWN);
+    pinMode(LOWBRAKE_PIN, INPUT_PULLDOWN);
+    pinMode(HIGHBRAKE_PIN, INPUT_PULLDOWN);
+    pinMode(REVERSE_PIN, INPUT_PULLDOWN);
     Serial.begin(9600);
 
     // Initialize indicator LED strip
@@ -684,17 +684,17 @@ void loop()
         // If the bootup animation is complete or disabled, proceed with regular operation
 
         //* Indicators =============================================
-        static bool previous_state = HIGH;               // Stores the previous state of the indicator button
+        static bool previous_state = LOW;               // Stores the previous state of the indicator button
         bool current_state = digitalRead(INDICATOR_PIN); // Reads the current state of the indicator button
 
-        if (previous_state == HIGH && current_state == LOW)
+        if (previous_state == LOW && current_state == HIGH)
         {
             startAnimation();
             button_held = true;
             Serial.println(F("Indicators Input Start"));
         }
 
-        if (previous_state == LOW && current_state == HIGH)
+        if (previous_state == HIGH && current_state == LOW)
         {
             button_held = false;
             Serial.println(F("Indicators Input Stop"));
@@ -711,8 +711,8 @@ void loop()
         }
 
         //* Brake ==================================================
-        bool lowBrakePressed = !digitalRead(LOWBRAKE_PIN);
-        bool highBrakePressed = !digitalRead(HIGHBRAKE_PIN);
+        bool lowBrakePressed = digitalRead(LOWBRAKE_PIN);
+        bool highBrakePressed = digitalRead(HIGHBRAKE_PIN);
 
         if (brakeState == BRAKE_DRL_MODE)
         {
@@ -733,16 +733,16 @@ void loop()
         { runBrakeAnimation(); }
 
         //* Reverse light ===============================================        
-        static bool previous_reverse_state = HIGH;             // Stores the previous state of the reverse button
+        static bool previous_reverse_state = LOW;             // Stores the previous state of the reverse button
         bool current_reverse_state = digitalRead(REVERSE_PIN); // Reads the current state of the reverse button
 
-        if (previous_reverse_state == HIGH && current_reverse_state == LOW)
+        if (previous_reverse_state == LOW && current_reverse_state == HIGH)
         {
             startReverseAnimation();
             reverse_input_active = true;
         }
 
-        if (previous_reverse_state == LOW && current_reverse_state == HIGH)
+        if (previous_reverse_state == HIGH && current_reverse_state == LOW)
         { reverse_input_active = false; }
 
         previous_reverse_state = current_reverse_state;
